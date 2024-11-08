@@ -1,100 +1,108 @@
-// Quiz data
-const quizQuestions = [
-  {
-    question: "What is the formula for speed?",
-    options: ["Distance / Time", "Time / Distance", "Speed x Time", "Speed x Distance"],
-    correctAnswer: 0, // Index of the correct answer in the options array
-    explanation: "Speed is defined as the distance traveled per unit of time, so the formula is Distance / Time."
-  },
-  {
-    question: "What is the unit of force?",
-    options: ["Joule", "Newton", "Meter", "Watt"],
-    correctAnswer: 1,
-    explanation: "The unit of force is the Newton (N), named after Sir Isaac Newton."
-  },
-  {
-    question: "Which of the following is an example of potential energy?",
-    options: ["A moving car", "A stretched spring", "A running athlete", "A flowing river"],
-    correctAnswer: 1,
-    explanation: "Potential energy is stored energy, like energy stored in a stretched spring."
-  },
-  {
-    question: "What is the formula for kinetic energy?",
-    options: ["0.5 x mass x velocity^2", "mass x velocity", "0.5 x mass x velocity", "velocity / mass"],
-    correctAnswer: 0,
-    explanation: "The formula for kinetic energy is 0.5 x mass x velocity^2."
-  }
-];
+// The base URL for the Open Trivia Database (OTDB) API
+const apiUrl = "https://opentdb.com/api.php?amount=10&category=17&type=multiple"; // Category 17 corresponds to Science: Nature
 
 let currentQuestionIndex = 0;
+let quizData = [];
+
+// Elements
+const questionElement = document.getElementById('question');
+const optionsContainer = document.getElementById('options-container');
+const feedbackElement = document.getElementById('feedback');
+const explanationElement = document.getElementById('explanation');
+const nextButton = document.getElementById('next-button');
+
+// Function to fetch random physics questions from the API
+async function fetchQuestions() {
+  try {
+    const response = await fetch(apiUrl);
+    const data = await response.json();
+    quizData = data.results; // Store the fetched questions
+    loadQuestion();
+  } catch (error) {
+    console.error('Error fetching questions:', error);
+    alert("Failed to load questions. Please try again later.");
+  }
+}
 
 // Function to load the current question and options
 function loadQuestion() {
-  const questionData = quizQuestions[currentQuestionIndex];
-  
-  // Display the question
-  document.getElementById('question').textContent = questionData.question;
-  
-  // Display options
-  const optionsContainer = document.getElementById('options-container');
-  optionsContainer.innerHTML = ''; // Clear any previous options
-  
-  questionData.options.forEach((option, index) => {
-    const optionElement = document.createElement('div');
-    optionElement.textContent = option;
-    optionElement.classList.add('option');
-    optionElement.onclick = () => checkAnswer(index);
-    optionsContainer.appendChild(optionElement);
-  });
-  
-  // Hide feedback
-  document.getElementById('feedback').textContent = '';
-  document.getElementById('explanation').textContent = '';
-  
-  // Enable Next button only after an answer is selected
-  document.getElementById('next-button').disabled = true;
+  if (currentQuestionIndex < quizData.length) {
+    const questionData = quizData[currentQuestionIndex];
+    
+    // Display the question text
+    questionElement.textContent = questionData.question;
+    
+    // Prepare the options and randomize them
+    const options = [...questionData.incorrect_answers, questionData.correct_answer];
+    options.sort(() => Math.random() - 0.5); // Shuffle the options
+
+    // Display the options
+    optionsContainer.innerHTML = ''; // Clear previous options
+    options.forEach((option, index) => {
+      const optionElement = document.createElement('div');
+      optionElement.textContent = option;
+      optionElement.classList.add('option');
+      optionElement.onclick = () => checkAnswer(option, questionData.correct_answer);
+      optionsContainer.appendChild(optionElement);
+    });
+
+    // Reset feedback and explanation
+    feedbackElement.textContent = '';
+    explanationElement.textContent = '';
+    nextButton.disabled = true;
+  } else {
+    // End of quiz
+    questionElement.textContent = "Congratulations, you've completed the quiz!";
+    optionsContainer.innerHTML = '';
+    feedbackElement.textContent = '';
+    explanationElement.textContent = '';
+    nextButton.textContent = "Restart";
+    nextButton.disabled = false;
+    currentQuestionIndex = 0; // Reset for restart
+  }
 }
 
-// Function to check if the selected answer is correct
-function checkAnswer(selectedIndex) {
-  const questionData = quizQuestions[currentQuestionIndex];
-  
-  // Provide feedback
-  const feedback = document.getElementById('feedback');
-  const explanation = document.getElementById('explanation');
+// Function to check the answer
+function checkAnswer(selectedOption, correctAnswer) {
   const options = document.querySelectorAll('.option');
-  
-  if (selectedIndex === questionData.correctAnswer) {
-    feedback.textContent = "Correct!";
-    explanation.textContent = questionData.explanation;
-    options[selectedIndex].classList.add('correct');
+
+  // Provide feedback
+  if (selectedOption === correctAnswer) {
+    feedbackElement.textContent = "Correct!";
+    explanationElement.textContent = `Great job! The correct answer is: ${correctAnswer}`;
+    options.forEach(option => {
+      if (option.textContent === correctAnswer) {
+        option.classList.add('correct');
+      }
+    });
   } else {
-    feedback.textContent = "Incorrect!";
-    explanation.textContent = `The correct answer is: ${questionData.options[questionData.correctAnswer]}.`;
-    options[selectedIndex].classList.add('incorrect');
-    options[questionData.correctAnswer].classList.add('correct');
+    feedbackElement.textContent = "Incorrect!";
+    explanationElement.textContent = `The correct answer is: ${correctAnswer}.`;
+    options.forEach(option => {
+      if (option.textContent === selectedOption) {
+        option.classList.add('incorrect');
+      }
+      if (option.textContent === correctAnswer) {
+        option.classList.add('correct');
+      }
+    });
   }
 
-  // Disable options after an answer is selected
+  // Disable options after selecting an answer
   options.forEach(option => option.onclick = null);
 
-  // Enable the Next button
-  document.getElementById('next-button').disabled = false;
+  // Enable the next button
+  nextButton.disabled = false;
 }
 
 // Function to go to the next question
 function nextQuestion() {
   currentQuestionIndex++;
-  if (currentQuestionIndex < quizQuestions.length) {
-    loadQuestion();
-  } else {
-    document.getElementById('question').textContent = "Congratulations, you've completed the quiz!";
-    document.getElementById('options-container').innerHTML = '';
-    document.getElementById('feedback-container').style.display = 'none';
-    document.getElementById('next-button').textContent = "Restart";
-    currentQuestionIndex = 0; // Reset the quiz
-  }
+  loadQuestion();
 }
 
-// Initial call to load the first question
-loadQuestion();
+// Initial call to fetch the questions
+fetchQuestions();
+
+// Event listener for the Next button
+nextButton.addEventListener('click', nextQuestion);
